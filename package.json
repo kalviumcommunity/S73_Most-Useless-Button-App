@@ -1,0 +1,11 @@
+{
+  "name": "s73_most-useless-button-app",
+  "version": "1.0.0",
+  "description": "**An app where there is only a single button with absolutely no purpose, but when you click the button, every time, you get a new silly fact, joke, or sound effect. It also tracks your number of button clicks and compares it to other users.**",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC"
+}
