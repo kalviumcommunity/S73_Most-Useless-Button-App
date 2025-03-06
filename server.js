@@ -1,19 +1,22 @@
-
-//Importing and creating instances of the packages , and defining the port number.
+require('dotenv').config();
 const express = require('express');
+const mongoose = require('mongoose');
+
 const app = express();
-const port = 3000;
+const PORT = process.env.PORT;
 
+// Connecting to MongoDB atlas
+mongoose
+  .connect(process.env.MONGO_URI)
+  .then(() => console.log('MongoDB connected successfully'))
+  .catch((err) => console.error('MongoDB connection error:', err));
 
-
-// Define a GET endpoint at '/ping' that responds with 'pong'
-app.get('/ping', (req, res) => {
-    res.send('pong');
+// Home route with DB status
+app.get('/', (req, res) => {
+  const dbStatus = mongoose.connection.readyState === 1 ? 'Connected' : 'Not Connected';
+  res.json({dbStatus});
 });
 
-
-// Start the server and listen on the defined port
-
-app.listen(port, () => {
-    console.log(`Server is running on http://localhost:${port}`);
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
 });
