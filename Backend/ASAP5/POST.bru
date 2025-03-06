@@ -1,0 +1,20 @@
+meta {
+  name: POST
+  type: http
+  seq: 3
+}
+
+post {
+  url: http://localhost:5000/users
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "username": "vraj patel",
+    "email": "vraj_gamer@example.com",
+    "password": "superSecret123"
+  }
+  
+}
