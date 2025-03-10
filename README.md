@@ -26,3 +26,9 @@ Leaders of whom clicked the button the most.
 
 It is super simple and silly, just perfect for testing backend concepts such as user login, database integration, and API calls.
 The leaderboard feature is a great way to showcase real-time data updates.
+
+
+### Frontend deployment link -- [My frontend deployment](https://2e97e346.most-useless-button-app.pages.dev)
+
+
+Manual link for fronted deployed site- https://2e97e346.most-useless-button-app.pages.dev
