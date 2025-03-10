@@ -1,17 +1,39 @@
-import React from "react"
-import "./App.css"
+import React from "react";
+import EntityCard from "./components/entities";
+import { BrowserRouter as Router, Routes, Route, Link } from "react-router-dom";
+import Home from "./components/home";
 
-export default function App() {
+const dummyData = {
+  name: "User123",
+  score: 2500,
+  rank: 5
+};
+
+
+const Leaderboard = () => (
+  <div className="flex justify-center items-center min-h-screen bg-gray-100">
+    <EntityCard {...dummyData} />
+  </div>
+);
+
+const App = () => {
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-gray-900 text-white">
-      <h1 className="text-4xl font-bold mb-4">Most Useless Button App</h1>
-      <p className="text-lg mb-6">
-        Click a button that does absolutely nothing useful... but you still want to try!
-      </p>
-      <button className="px-6 py-3 bg-blue-500 rounded-lg text-white text-lg hover:bg-blue-600">
-        Click Me!
-      </button>
-    </div>
-  );
-}
+    <Router>
+      <div className="">
+        
+        <nav className="flex space-x-4 p-3 bg-blue-200">
+          <Link to="/" className="text-white border-2 p-2 bg-black rounded-lg">Home</Link>
+          <Link to="/leaderboard" className="text-white border-2 p-2 bg-black rounded-lg">Leaderboard</Link>
+        </nav>
 
+        
+        <Routes>
+          <Route path="/" element={<Home />} />
+          <Route path="/leaderboard" element={<Leaderboard />} />
+        </Routes>
+      </div>
+    </Router>
+  );
+};
+
+export default App;
