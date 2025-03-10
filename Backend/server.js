@@ -25,7 +25,7 @@ app.get('/', (req, res) => {
 });
 
 
-app.get("/api/entities", async (req, res) => {
+app.get("/users/get", async (req, res) => {
   try {
     const entities = await User.find(); 
     res.json(entities);
@@ -36,14 +36,17 @@ app.get("/api/entities", async (req, res) => {
 
 
 app.post('/users', async (req, res) => {
+  console.log("Received data:", req.body); 
   try {
     const user = new User(req.body);
     await user.save();
     res.status(201).json(user);
   } catch (err) {
+    console.error("Error:", err.message);
     res.status(400).json({ error: err.message });
   }
 });
+
 
 
 app.put('/users/:id', async (req, res) => {
