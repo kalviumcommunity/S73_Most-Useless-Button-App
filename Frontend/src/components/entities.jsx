@@ -6,7 +6,7 @@ const UserList = () => {
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    fetch("http://localhost:5000/api/entities") // Adjust URL based on backend deployment
+    fetch("http://localhost:5000/users/get") 
       .then((response) => {
         if (!response.ok) {
           throw new Error("Failed to fetch users");
