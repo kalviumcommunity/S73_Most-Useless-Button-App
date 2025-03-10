@@ -2,10 +2,13 @@ require('dotenv').config();
 const express = require('express');
 const mongoose = require('mongoose');
 const User = require('./schema'); 
+const cors = require("cors");
+
 
 const app = express();
 const PORT = process.env.PORT;
 
+app.use(cors());
 
 app.use(express.json());
 
@@ -22,12 +25,12 @@ app.get('/', (req, res) => {
 });
 
 
-app.get('/users', async (req, res) => {
+app.get("/api/entities", async (req, res) => {
   try {
-    const users = await User.find();
-    res.json(users);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
+    const entities = await User.find(); 
+    res.json(entities);
+  } catch (error) {
+    res.status(500).json({ error: "Failed to fetch entities" });
   }
 });
 
