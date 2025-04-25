@@ -1,36 +1,27 @@
 import React from "react";
-import UserList from "./components/entities";
-import { BrowserRouter as Router, Routes, Route, Link } from "react-router-dom";
+import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import Navbar from "./components/Navbar";
+import Signup from "./components/signup";
+import Login from "./components/login";
+import Dashboard from "./components/dashboard";
+import UpdateUser from "./components/UpdateUser";
 import Home from "./components/home";
-import UserForm from "./components/userForm";
 
-
-
-const App = () => {
+function App() {
   return (
     <Router>
-        
-        <nav className="flex p-3 bg-blue-200">
-  
-  <div className="flex space-x-4 flex-1">
-    <Link to="/" className="text-white border-2 p-2 bg-black rounded-lg">Home</Link>
-    <Link to="/entities" className="text-white border-2 p-2 bg-black rounded-lg">Users</Link>
-  </div>
-
-  
-  <Link to="/addUser" className="text-white border-2 p-2 bg-black rounded-lg">
-    Add User
-  </Link>
-</nav>
+      <div className="min-h-screen bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-white">
+        <Navbar />
         <Routes>
-        <Route path="/" element={<Home />} />
-        <Route path="/entities" element={<UserList />} />
-        <Route path="/addUser" element={<UserForm/>}/>
-
-      </Routes>
+          <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/login" element={<Login />} />
+          <Route path="/signup" element={<Signup />} />
+          <Route path="/update-user" element={<UpdateUser />} />
+          <Route path="/" element={<Home/>}/>
+        </Routes>
+      </div>
     </Router>
-
   );
-};
+}
 
 export default App;
