@@ -13,7 +13,7 @@ const Navbar = () => {
   return (
     <nav className="bg-gradient-to-r from-gray-900 to-blue-700 text-white shadow-md">
       <div className="max-w-screen-xl mx-auto px-4 py-4 flex justify-between items-center">
-        <Link to="/" className="text-2xl font-bold tracking-wide">
+        <Link className="text-2xl font-bold tracking-wide">
           RentSphere
         </Link>
 
