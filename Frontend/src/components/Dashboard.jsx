@@ -1,11 +1,33 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import axios from 'axios';
 
 const Dashboard = () => {
   const [clicks, setClicks] = useState(0);
+  const [wastedTime, setWastedTime] = useState(0);  // Track wasted time (in seconds)
   const [response, setResponse] = useState('');
   const navigate = useNavigate();
+  const token = localStorage.getItem('token'); // Get token from localStorage
 
+  // Fetch button stats (clicks and wasted time) when the component mounts
+  useEffect(() => {
+    if (token) {
+      axios
+        .get('http://localhost:5000/button-stats', {
+          headers: { Authorization: `Bearer ${token}` },
+        })
+        .then((response) => {
+          const { clicks, wastedTime } = response.data;
+          setClicks(clicks || 0);   // Set the click count from the backend
+          setWastedTime(wastedTime || 0); // Set the wasted time from the backend
+        })
+        .catch((err) => {
+          console.error('Error fetching button stats:', err);
+        });
+    }
+  }, [token]);
+
+  // Handle button click (increment click count and update wasted time)
   const handleButtonClick = () => {
     const facts = [
       "Why did the scarecrow win an award? Because he was outstanding in his field!",
@@ -16,25 +38,29 @@ const Dashboard = () => {
     ];
     const random = facts[Math.floor(Math.random() * facts.length)];
     setResponse(random);
-    setClicks(prev => prev + 1);
-  };
 
-//   const handleLogout = () => {
-//     localStorage.removeItem("token"); // Remove token or any user info
-//     sessionStorage.removeItem("token");
-//     navigate('/login'); // Redirect to login page
-//   };
+    // Send updated button stats to backend
+    if (token) {
+      axios
+        .put(
+          'http://localhost:5000/button-stats',
+          { clicks: 1, wastedTime: 2 },  // Increment by 1 click, 2 seconds wasted
+          { headers: { Authorization: `Bearer ${token}` } }
+        )
+        .then((response) => {
+          // Update the UI immediately with the new values
+          setClicks(prevClicks => prevClicks + 1);  // Increment the click count locally
+          setWastedTime(prevTime => prevTime + 2);  // Increment the wasted time locally
+          console.log('Button stats updated');
+        })
+        .catch((err) => {
+          console.error('Error updating button stats:', err);
+        });
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-300 via-blue-900 to-blue-700 text-white p-6 flex flex-col items-center justify-center relative">
-      {/* Logout button top right */}
-      {/* <button
-        onClick={handleLogout}
-        className="absolute top-4 right-4 bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-md"
-      >
-        Logout
-      </button> */}
-
       <h1 className="text-4xl font-bold mb-4 text-center">
         🎉 Welcome to the Most Useless Button App!
       </h1>
@@ -59,7 +85,7 @@ const Dashboard = () => {
       <div className="mt-10 text-center">
         <p>
           Stats: You’ve wasted approximately{" "}
-          <strong>{clicks * 2} seconds</strong> of your life. 😎
+          <strong>{wastedTime} seconds</strong> of your life. 😎
         </p>
         <p className="text-sm mt-1 opacity-75">Keep going, champ!</p>
       </div>

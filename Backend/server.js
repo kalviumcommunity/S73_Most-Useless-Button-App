@@ -5,6 +5,7 @@ const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken'); // Add JWT
 const User = require('./schema');
 const cors = require('cors');
+const ButtonStat = require("./TimeSchema")
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -40,22 +41,42 @@ app.post('/users', async (req, res) => {
   }
 
   try {
+    // Hash the password
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
 
+    // Create the new user
     const user = new User({
       username,
       email,
       password: hashedPassword,
     });
 
+    // Save the user to the database
     await user.save();
-    const token = generateToken(user); // Generate JWT token for new user
+
+    // Create the default button stats for the new user
+    const buttonStats = new ButtonStat({
+      userId: user._id,      // Link button stats to the user by their ID
+      clicks: 0,             // Initial button stats with 0 clicks
+      wastedTime: 0,         // Initial button stats with 0 wasted time
+      created_by: user._id,  // Required field: reference to the user creating the stats
+    });
+
+
+    // Save the button stats to the database
+    await buttonStats.save();
+
+    // Generate JWT token for the new user
+    const token = generateToken(user);
+
+    // Respond with the JWT token
     res.status(201).json({ token });
   } catch (err) {
     res.status(400).json({ error: err.message });
   }
 });
+
 
 // Login route (with JWT generation)
 app.post('/login', async (req, res) => {
@@ -146,6 +167,83 @@ app.delete('/users/:id', verifyToken, async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
+
+
+app.get('/button-stats', verifyToken, async (req, res) => {
+  try {
+    const buttonStat = await ButtonStat.findOne({ created_by: req.user.userId });
+
+    if (!buttonStat) {
+      return res.status(404).json({ message: "Button stats not found" });
+    }
+
+    res.json(buttonStat);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+
+app.put('/button-stats', verifyToken, async (req, res) => {
+  const { clicks, wastedTime } = req.body;
+
+  try {
+    // Check if ButtonStat exists for the logged-in user
+    let buttonStat = await ButtonStat.findOne({ created_by: req.user.userId });
+
+    // If ButtonStat doesn't exist, create a new one
+    if (!buttonStat) {
+      buttonStat = new ButtonStat({
+        created_by: req.user.userId,
+        clicks: clicks || 0,
+        wastedTime: wastedTime || 0,
+      });
+
+      await buttonStat.save();
+    } else {
+      // If it exists, update the existing ButtonStat (increment clicks/wastedTime)
+      buttonStat.clicks += clicks || 0;
+      buttonStat.wastedTime += wastedTime || 0;
+
+      await buttonStat.save();
+    }
+
+    // Return the updated buttonStat
+    res.json(buttonStat);
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+
+app.get("/getAllUsersWithButtonStats", async (req, res) => {
+  try {
+    const buttonStats = await ButtonStat.find()
+      .populate("created_by", "username") // <<<<<< Correct field here
+      .lean();
+
+    const userMap = {};
+
+    buttonStats.forEach((stat) => {
+      const userId = stat.created_by._id.toString();
+      if (!userMap[userId]) {
+        userMap[userId] = {
+          _id: userId,
+          username: stat.created_by.username,
+          buttonStats: [],
+        };
+      }
+      userMap[userId].buttonStats.push(stat);
+    });
+
+    res.json(Object.values(userMap));
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Server Error" });
+  }
+});
+
+
 
 // Start server
 app.listen(PORT, () => {
