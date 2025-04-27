@@ -1,0 +1,23 @@
+meta {
+  name: put
+  type: http
+  seq: 6
+}
+
+put {
+  url: http://localhost:5000/users
+  body: json
+  auth: inherit
+}
+
+headers {
+  Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI2ODBkMTI3NmNjMjMwMDM1NzM1YWRiZjMiLCJ1c2VybmFtZSI6IlNoaXZhbSIsImlhdCI6MTc0NTY4NzE2OCwiZXhwIjoxNzQ1NjkwNzY4fQ.9J4hEjOF5YvXRayxyMAtc55UXyHHCfLE5DMCWssr300
+}
+
+body:json {
+  {
+    "clicks": 2,
+    "wastedTime": 30
+  }
+  
+}
