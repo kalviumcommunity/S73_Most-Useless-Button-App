@@ -2,33 +2,43 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 
+// Configure axios to include credentials in all requests
+axios.defaults.withCredentials = true;
+
 const Dashboard = () => {
   const [clicks, setClicks] = useState(0);
-  const [wastedTime, setWastedTime] = useState(0);  // Track wasted time (in seconds)
+  const [wastedTime, setWastedTime] = useState(0);
   const [response, setResponse] = useState('');
+  const [user, setUser] = useState(null);
   const navigate = useNavigate();
-  const token = localStorage.getItem('token'); // Get token from localStorage
 
-  // Fetch button stats (clicks and wasted time) when the component mounts
+  // Fetch user and button stats when the component mounts
   useEffect(() => {
-    if (token) {
-      axios
-        .get('http://localhost:5000/button-stats', {
-          headers: { Authorization: `Bearer ${token}` },
-        })
-        .then((response) => {
-          const { clicks, wastedTime } = response.data;
-          setClicks(clicks || 0);   // Set the click count from the backend
-          setWastedTime(wastedTime || 0); // Set the wasted time from the backend
-        })
-        .catch((err) => {
-          console.error('Error fetching button stats:', err);
-        });
-    }
-  }, [token]);
+    const fetchUserAndStats = async () => {
+      try {
+        // First, check if user is logged in by fetching user data
+        const userResponse = await axios.get('http://localhost:5000/users/me');
+        setUser(userResponse.data);
+        
+        // Then fetch button stats
+        const statsResponse = await axios.get('http://localhost:5000/button-stats');
+        const { clicks, wastedTime } = statsResponse.data;
+        setClicks(clicks || 0);
+        setWastedTime(wastedTime || 0);
+      } catch (err) {
+        console.error('Error fetching data:', err);
+        // Redirect to login if not authenticated
+        if (err.response && err.response.status === 401) {
+          navigate('/login');
+        }
+      }
+    };
+    
+    fetchUserAndStats();
+  }, [navigate]);
 
   // Handle button click (increment click count and update wasted time)
-  const handleButtonClick = () => {
+  const handleButtonClick = async () => {
     const facts = [
       "Why did the scarecrow win an award? Because he was outstanding in his field!",
       "Bananas are berries, but strawberries aren't!",
@@ -39,30 +49,34 @@ const Dashboard = () => {
     const random = facts[Math.floor(Math.random() * facts.length)];
     setResponse(random);
 
-    // Send updated button stats to backend
-    if (token) {
-      axios
-        .put(
-          'http://localhost:5000/button-stats',
-          { clicks: 1, wastedTime: 2 },  // Increment by 1 click, 2 seconds wasted
-          { headers: { Authorization: `Bearer ${token}` } }
-        )
-        .then((response) => {
-          // Update the UI immediately with the new values
-          setClicks(prevClicks => prevClicks + 1);  // Increment the click count locally
-          setWastedTime(prevTime => prevTime + 2);  // Increment the wasted time locally
-          console.log('Button stats updated');
-        })
-        .catch((err) => {
-          console.error('Error updating button stats:', err);
-        });
+    try {
+      // Send updated button stats to backend
+      const response = await axios.put(
+        'http://localhost:5000/button-stats',
+        { clicks: 1, wastedTime: 2 } // Increment by 1 click, 2 seconds wasted
+      );
+
+      // Update the UI with the new values
+      setClicks(prevClicks => prevClicks + 1);
+      setWastedTime(prevTime => prevTime + 2);
+      console.log('Button stats updated');
+    } catch (err) {
+      console.error('Error updating button stats:', err);
+      // Handle unauthenticated error
+      if (err.response && err.response.status === 401) {
+        navigate('/login');
+      }
     }
   };
+
+  if (!user) {
+    return <div className="text-center p-8">Loading...</div>;
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-300 via-blue-900 to-blue-700 text-white p-6 flex flex-col items-center justify-center relative">
       <h1 className="text-4xl font-bold mb-4 text-center">
-        🎉 Welcome to the Most Useless Button App!
+        🎉 Welcome to the Most Useless Button App, {user.username}!
       </h1>
 
       <p className="mb-6 text-lg text-center">
@@ -84,7 +98,7 @@ const Dashboard = () => {
 
       <div className="mt-10 text-center">
         <p>
-          Stats: You’ve wasted approximately{" "}
+          Stats: You've wasted approximately{" "}
           <strong>{wastedTime} seconds</strong> of your life. 😎
         </p>
         <p className="text-sm mt-1 opacity-75">Keep going, champ!</p>

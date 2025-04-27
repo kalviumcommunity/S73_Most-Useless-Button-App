@@ -1,6 +1,5 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import Navbar from "./Navbar";
 
 const Signup = () => {
   const [formData, setFormData] = useState({ username: "", email: "", password: "" });
@@ -20,12 +19,13 @@ const Signup = () => {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(formData),
+        credentials: 'include', // Allow cookies
       });
   
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Signup failed");
   
-      console.log("✅ Signup successful. No login token stored.");
+      console.log("✅ Signup successful");
       alert("Signup successful! Please login.");
       navigate("/login"); // Redirect to login page
     } catch (err) {
@@ -34,7 +34,6 @@ const Signup = () => {
     }
   };
   
-
   return (
     <div className="max-w-md mx-auto mt-10 bg-white p-8 rounded-2xl shadow-lg text-black">
       <h2 className="text-2xl font-semibold text-center mb-6">Signup</h2>

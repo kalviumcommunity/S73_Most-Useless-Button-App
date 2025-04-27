@@ -2,15 +2,21 @@ require('dotenv').config();
 const express = require('express');
 const mongoose = require('mongoose');
 const bcrypt = require('bcrypt');
-const jwt = require('jsonwebtoken'); // Add JWT
+const jwt = require('jsonwebtoken');
 const User = require('./schema');
 const cors = require('cors');
-const ButtonStat = require("./TimeSchema")
+const cookieParser = require('cookie-parser'); // Add cookie-parser
+const ButtonStat = require("./TimeSchema");
 
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-app.use(cors());
+// Configure CORS to allow credentials and specific origin
+app.use(cors({
+  origin: 'http://localhost:5173', // Your frontend URL
+  credentials: true // Allow cookies to be sent
+}));
+app.use(cookieParser()); // Add cookie-parser middleware
 app.use(express.json());
 
 // Check if necessary environment variables are set
@@ -30,6 +36,14 @@ const generateToken = (user) => {
   return jwt.sign({ userId: user._id, username: user.username }, process.env.JWT_SECRET, {
     expiresIn: '1h', // Token expiration
   });
+};
+
+// Cookie options for security
+const cookieOptions = {
+  httpOnly: true, // Prevents JavaScript from reading the cookie
+  secure: process.env.NODE_ENV === 'production', // Use secure cookies in production
+  sameSite: 'strict', // CSRF protection
+  maxAge: 3600000 // 1 hour in milliseconds
 };
 
 // Add new user (Registration)
@@ -57,12 +71,11 @@ app.post('/users', async (req, res) => {
 
     // Create the default button stats for the new user
     const buttonStats = new ButtonStat({
-      userId: user._id,      // Link button stats to the user by their ID
-      clicks: 0,             // Initial button stats with 0 clicks
-      wastedTime: 0,         // Initial button stats with 0 wasted time
-      created_by: user._id,  // Required field: reference to the user creating the stats
+      userId: user._id,
+      clicks: 0,
+      wastedTime: 0,
+      created_by: user._id,
     });
-
 
     // Save the button stats to the database
     await buttonStats.save();
@@ -70,15 +83,24 @@ app.post('/users', async (req, res) => {
     // Generate JWT token for the new user
     const token = generateToken(user);
 
-    // Respond with the JWT token
-    res.status(201).json({ token });
+    // Set the JWT token as a cookie
+    res.cookie('token', token, cookieOptions);
+
+    // Respond with success message and user info (without password)
+    res.status(201).json({ 
+      message: "User registered successfully",
+      user: {
+        id: user._id,
+        username: user.username,
+        email: user.email
+      }
+    });
   } catch (err) {
     res.status(400).json({ error: err.message });
   }
 });
 
-
-// Login route (with JWT generation)
+// Login route (with JWT cookie)
 app.post('/login', async (req, res) => {
   const { username, password } = req.body;
 
@@ -90,35 +112,52 @@ app.post('/login', async (req, res) => {
     if (!isMatch) return res.status(400).json({ message: "Invalid credentials" });
 
     const token = generateToken(user); // Generate JWT token on successful login
-    res.json({ token });
+    
+    // Set the JWT token as a cookie
+    res.cookie('token', token, cookieOptions);
+    
+    // Send user info (without password)
+    res.json({ 
+      message: "Login successful",
+      user: {
+        id: user._id,
+        username: user.username,
+        email: user.email
+      }
+    });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-// Middleware for protected routes (verify JWT)
+// Logout route
+app.post('/logout', (req, res) => {
+  res.clearCookie('token');
+  res.json({ message: "Logged out successfully" });
+});
+
+// Middleware for protected routes (verify JWT from cookie)
 const verifyToken = (req, res, next) => {
-  const token = req.header('Authorization')?.replace('Bearer ', '');
+  const token = req.cookies.token;
 
   if (!token) {
-    return res.status(401).json({ message: "Access denied, no token provided" });
+    return res.status(401).json({ message: "Access denied, not authenticated" });
   }
 
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     req.user = decoded; // Attach user data to request object
-    console.log('Token verified, user:', req.user);
     next();
   } catch (err) {
+    res.clearCookie('token');
     res.status(400).json({ message: "Invalid or expired token" });
   }
 };
 
-
 // Get current logged-in user's details
 app.get('/users/me', verifyToken, async (req, res) => {
   try {
-    const user = await User.findById(req.user.userId); // Get user based on JWT userId
+    const user = await User.findById(req.user.userId).select('-password'); // Exclude password
     if (!user) return res.status(404).json({ message: "User not found" });
     res.json(user);
   } catch (err) {
@@ -126,10 +165,14 @@ app.get('/users/me', verifyToken, async (req, res) => {
   }
 });
 
-
 // Inside your PUT route
-app.put('/users/:id', async (req, res) => {
+app.put('/users/:id', verifyToken, async (req, res) => {
   try {
+    // Ensure user can only update their own profile
+    if (req.user.userId !== req.params.id) {
+      return res.status(403).json({ message: "Not authorized to update this user" });
+    }
+
     const updates = { ...req.body };
 
     // If password is being updated, hash it
@@ -141,15 +184,13 @@ app.put('/users/:id', async (req, res) => {
     const updatedUser = await User.findByIdAndUpdate(req.params.id, updates, {
       new: true,
       runValidators: true,
-    });
+    }).select('-password'); // Exclude password from response
 
     res.json(updatedUser);
   } catch (err) {
     res.status(400).json({ message: err.message });
   }
 });
-
-
 
 // Delete user (protected route)
 app.delete('/users/:id', verifyToken, async (req, res) => {
@@ -162,12 +203,17 @@ app.delete('/users/:id', verifyToken, async (req, res) => {
   try {
     const user = await User.findByIdAndDelete(userId);
     if (!user) return res.status(404).json({ message: "User not found" });
+    
+    // Also delete related button stats
+    await ButtonStat.deleteMany({ created_by: userId });
+    
+    // Clear authentication cookie
+    res.clearCookie('token');
     res.json({ message: "User deleted" });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
-
 
 app.get('/button-stats', verifyToken, async (req, res) => {
   try {
@@ -182,7 +228,6 @@ app.get('/button-stats', verifyToken, async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
-
 
 app.put('/button-stats', verifyToken, async (req, res) => {
   const { clicks, wastedTime } = req.body;
@@ -215,11 +260,10 @@ app.put('/button-stats', verifyToken, async (req, res) => {
   }
 });
 
-
 app.get("/getAllUsersWithButtonStats", async (req, res) => {
   try {
     const buttonStats = await ButtonStat.find()
-      .populate("created_by", "username") // <<<<<< Correct field here
+      .populate("created_by", "username")
       .lean();
 
     const userMap = {};
@@ -242,8 +286,6 @@ app.get("/getAllUsersWithButtonStats", async (req, res) => {
     res.status(500).json({ message: "Server Error" });
   }
 });
-
-
 
 // Start server
 app.listen(PORT, () => {

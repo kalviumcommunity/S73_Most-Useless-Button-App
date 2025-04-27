@@ -1,6 +1,5 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import Navbar from "./Navbar";
 
 const Login = () => {
   const [formData, setFormData] = useState({ username: "", password: "" });
@@ -16,33 +15,29 @@ const Login = () => {
     setError(null);
 
     try {
-      // Login request
+      // Login request with credentials option to allow cookies
       const res = await fetch("http://localhost:5000/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(formData),
+        credentials: 'include', // Important: This allows cookies to be sent and received
       });
 
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || "Login failed");
 
-      const token = data.token;
-      console.log("✅ Token received:", token);
-      localStorage.setItem("token", token);
+      console.log("✅ Login successful");
 
-      // Fetch user profile using token
+      // Fetch user profile using cookie authentication
       const userRes = await fetch("http://localhost:5000/users/me", {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+        credentials: 'include', // Important for cookies
       });
 
       const user = await userRes.json();
       if (!userRes.ok) throw new Error(user.message || "Failed to fetch user");
 
       console.log("✅ User fetched:", user);
-      localStorage.setItem("user", JSON.stringify(user));
-
+      
       alert("Login successful!");
       navigate("/dashboard");
     } catch (err) {

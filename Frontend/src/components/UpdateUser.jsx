@@ -7,23 +7,36 @@ const UpdateUser = () => {
     email: '',
     password: '',
   });
-  const [userId, setUserId] = useState(null); // Ensure userId is properly set
+  const [userId, setUserId] = useState(null);
   const [message, setMessage] = useState('');
   const navigate = useNavigate();
 
   useEffect(() => {
-    const user = JSON.parse(localStorage.getItem('user'));
-    if (user && user._id) {
-      setUserId(user._id); // Set userId properly from localStorage
-      setFormData({
-        username: user.username || '',
-        email: user.email || '',
-        password: '',
-      });
-    } else {
-      setMessage('User is not logged in or session expired.');
-      navigate('/login'); // Redirect to login if no user is found
-    }
+    // Fetch user data using cookies for authentication
+    const fetchUserData = async () => {
+      try {
+        const response = await fetch('http://localhost:5000/users/me', {
+          credentials: 'include' // Important for cookies
+        });
+        
+        if (!response.ok) {
+          throw new Error('Not authenticated');
+        }
+        
+        const user = await response.json();
+        setUserId(user._id);
+        setFormData({
+          username: user.username || '',
+          email: user.email || '',
+          password: '',
+        });
+      } catch (err) {
+        setMessage('User is not logged in or session expired.');
+        navigate('/login');
+      }
+    };
+    
+    fetchUserData();
   }, [navigate]);
 
   const handleChange = (e) => {
@@ -35,28 +48,26 @@ const UpdateUser = () => {
 
   const handleUpdate = async (e) => {
     e.preventDefault();
-    const token = localStorage.getItem('token');
 
-    if (!token || !userId) {
+    if (!userId) {
       setMessage('User is not logged in or userId is missing.');
       navigate('/login');
       return;
     }
 
     try {
-      const res = await fetch(`http://localhost:5000/users/${userId}`, { // Correctly use userId
+      const res = await fetch(`http://localhost:5000/users/${userId}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`, // Include the token
         },
+        credentials: 'include', // Important for cookies
         body: JSON.stringify(formData),
       });
 
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || 'Update failed');
       setMessage('Profile updated successfully!');
-      localStorage.setItem('user', JSON.stringify(data)); // Save updated data
     } catch (err) {
       setMessage(err.message);
     }
@@ -64,18 +75,15 @@ const UpdateUser = () => {
 
   const handleDelete = async () => {
     if (!window.confirm('Are you sure you want to delete your account?')) return;
+    
     try {
-      const token = localStorage.getItem('token');
       const res = await fetch(`http://localhost:5000/users/${userId}`, {
         method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${token}`, // Include the token
-        },
+        credentials: 'include', // Important for cookies
       });
 
       if (!res.ok) throw new Error('Delete failed');
 
-      localStorage.clear();
       navigate('/signup');
     } catch (err) {
       setMessage(err.message);
@@ -97,15 +105,15 @@ const UpdateUser = () => {
             placeholder="Username"
             className="w-full p-3 border rounded-md"
           />
-         <input
-  type="email"
-  name="email"
-  value={formData.email || ''}
-  onChange={handleChange}
-  placeholder="Email"
-  readOnly
-  className="w-full p-3 border rounded-md bg-gray-200 text-gray-600 cursor-not-allowed"
-/>
+          <input
+            type="email"
+            name="email"
+            value={formData.email || ''}
+            onChange={handleChange}
+            placeholder="Email"
+            readOnly
+            className="w-full p-3 border rounded-md bg-gray-200 text-gray-600 cursor-not-allowed"
+          />
 
           <input
             type="password"
